@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nasza Gra Terenowa</title>
+    <title>Karkonoska Gra Terenowa</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         body { margin: 0; padding: 0; font-family: sans-serif; background: #f4f4f4; }
@@ -11,20 +11,24 @@
         #game-screen { display: none; position: relative; width: 100vw; height: 100vh; }
         #map { width: 100%; height: 100%; }
         #panel { position: absolute; top: 10px; left: 10px; z-index: 1000; background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.3); max-width: 85%; }
-        input, select, button { padding: 12px; margin: 10px 0; width: 90%; max-width: 300px; font-size: 16px; border-radius: 5px; border: 1px solid #ccc; }
+        input, select, button { padding: 12px; margin: 10px 0; width: 90%; max-width: 400px; font-size: 16px; border-radius: 5px; border: 1px solid #ccc; }
         button { background: #28a745; color: white; font-weight: bold; border: none; cursor: pointer; }
     </style>
 </head>
 <body>
 
     <div id="login-screen">
-        <h2>Witaj w Grze Terenowej!</h2>
+        <h2>Karkonoska Gra Terenowa</h2>
         <p>Wpisz nazwę swojego patrolu i wybierz trasę:</p>
         <input type="text" id="team-name" placeholder="Nazwa Patrolu..." required><br>
         
         <select id="route-select">
-            <option value="trasa_zielona">Trasa Zielona (Centrum - Łatwa)</option>
-            <option value="trasa_czerwona">Trasa Czerwona (Park - Trudna)</option>
+            <option value="trasa_1">Trasa I harcerska - Hufiec Bolesławiec</option>
+            <option value="trasa_2">Trasa II harcerska - Hufiec Świdnica</option>
+            <option value="trasa_3">Trasa III starszoharcerska - Hufiec Karkonoski</option>
+            <option value="trasa_4">Trasa IV wędrownicza - Hufiec Wrocław</option>
+            <option value="trasa_5">Trasa V wędrownicza - Hufiec Ziemi Dzierżoniowskiej</option>
+            <option value="trasa_6">Trasa VI starszoharcerska - Hufiec Wrocław Wschód</option>
         </select><br>
         
         <button onclick="uruchomGre()">Zacznij Przygodę</button>
@@ -33,8 +37,8 @@
     <div id="game-screen">
         <div id="panel">
             <b id="stat-team">Patrol: -</b><br>
-            <small id="stat-route" style="color: gray;">Trasa: -</small><br>
-            Dystans do punktu: <span id="stat-distance">Szukanie GPS...</span> m<br>
+            <small id="stat-route" style="color: gray; display: block; margin-bottom: 5px;">Trasa: -</small>
+            Dystans do najbliższego punktu: <span id="stat-distance">Szukanie GPS...</span> m<br>
             Zdobyte punkty: <span id="stat-score">0</span> / <span id="stat-total">0</span>
         </div>
         <div id="map"></div>
@@ -42,20 +46,112 @@
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        // TUTAJ DEFINIUJEMY WSZYSTKIE TRASY I ICH PUNKTY
         const bazaTras = {
-            trasa_zielona: [
-                { id: 1, lat: 52.2297, lng: 21.0122, nazwa: "Zielona 1: Wielkie drzewo", zdobyty: false },
-                { id: 2, lat: 52.2315, lng: 21.0145, nazwa: "Zielona 2: Kapliczka", zdobyty: false }
+            trasa_1: [
+                { id: 1, lat: 50.8242, lng: 15.5125, nazwa: "1. Wodospad Kamieńczyka", zdobyty: false },
+                { id: 2, lat: 50.8235, lng: 15.5115, nazwa: "2. Schronisko Kamieńczyk", zdobyty: false },
+                { id: 3, lat: 50.7961, lng: 15.5103, nazwa: "3. Hala Szrenicka", zdobyty: false },
+                { id: 4, lat: 50.7965, lng: 15.5110, nazwa: "4. Schronisko na Hali Szrenickiej", zdobyty: false },
+                { id: 5, lat: 50.7925, lng: 15.5086, nazwa: "5. Szczyt Szrenica", zdobyty: false },
+                { id: 6, lat: 50.7905, lng: 15.5152, nazwa: "6. Skałki Trzy Świnki", zdobyty: false },
+                { id: 7, lat: 50.7891, lng: 15.5245, nazwa: "7. Mokra Przełęcz", zdobyty: false },
+                { id: 8, lat: 50.7885, lng: 15.5132, nazwa: "8. Twarożnik", zdobyty: false },
+                { id: 9, lat: 50.7938, lng: 15.5118, nazwa: "9. Końskie Łby", zdobyty: false },
+                { id: 10, lat: 50.8294, lng: 15.5561, nazwa: "10. Wodospad Szklarki", zdobyty: false },
+                { id: 11, lat: 50.8291, lng: 15.5565, nazwa: "11. Schronisko Kochanówka", zdobyty: false },
+                { id: 12, lat: 50.8352, lng: 15.5473, nazwa: "12. Chybotek", zdobyty: false },
+                { id: 13, lat: 50.8341, lng: 15.5435, nazwa: "13. Złoty Widok", zdobyty: false },
+                { id: 14, lat: 50.8192, lng: 15.5341, nazwa: "14. Krucze Skały", zdobyty: false },
+                { id: 15, lat: 50.8305, lng: 15.5255, nazwa: "15. Stacja PKP Szklarska Poręba Górna", zdobyty: false }
             ],
-            trasa_czerwona: [
-                { id: 1, lat: 52.2330, lng: 21.0160, nazwa: "Czerwona 1: Pomnik", zdobyty: false },
-                { id: 2, lat: 52.2350, lng: 21.0190, nazwa: "Czerwona 2: Ukryta ławka", zdobyty: false },
-                { id: 3, lat: 52.2370, lng: 21.0210, nazwa: "Czerwona 3: Mostek", zdobyty: false }
+            trasa_2: [
+                { id: 1, lat: 50.7806, lng: 15.5398, nazwa: "1. Łabski Szczyt", zdobyty: false },
+                { id: 2, lat: 50.7877, lng: 15.5442, nazwa: "2. Schronisko pod Łabskim Szczytem", zdobyty: false },
+                { id: 3, lat: 50.7778, lng: 15.5681, nazwa: "3. Wielki Szyszak", zdobyty: false },
+                { id: 4, lat: 50.7792, lng: 15.5562, nazwa: "4. Śnieżne Kotły - Punkt Widokowy", zdobyty: false },
+                { id: 5, lat: 50.7795, lng: 15.5555, nazwa: "5. Śnieżne Kotły - Stacja Nadawcza", zdobyty: false },
+                { id: 6, lat: 50.7785, lng: 15.5590, nazwa: "6. Czarci Amfiteatr", zdobyty: false },
+                { id: 7, lat: 50.7845, lng: 15.5605, nazwa: "7. Śnieżne Stawki", zdobyty: false },
+                { id: 8, lat: 50.7942, lng: 15.5492, nazwa: "8. Kukułcze Skały", zdobyty: false },
+                { id: 9, lat: 50.8055, lng: 15.5620, nazwa: "9. Rozdroże pod Kamiennikiem", zdobyty: false },
+                { id: 10, lat: 50.8475, lng: 15.4744, nazwa: "10. Wysoki Kamień", zdobyty: false },
+                { id: 11, lat: 50.8472, lng: 15.4740, nazwa: "11. Schronisko Wysoki Kamień", zdobyty: false },
+                { id: 12, lat: 50.8441, lng: 15.5022, nazwa: "12. Zakręt Śmierci", zdobyty: false },
+                { id: 13, lat: 50.8385, lng: 15.5210, nazwa: "13. Czerwona Jaskinia", zdobyty: false },
+                { id: 14, lat: 50.8322, lng: 15.5055, nazwa: "14. Sowiniec", zdobyty: false },
+                { id: 15, lat: 50.8115, lng: 15.5312, nazwa: "15. Kamień Małżeński", zdobyty: false }
+            ],
+            trasa_3: [
+                { id: 1, lat: 50.8339, lng: 15.6444, nazwa: "1. Zamek Chojnik", zdobyty: false },
+                { id: 2, lat: 50.8336, lng: 15.6441, nazwa: "2. Schronisko na Zamku Chojnik", zdobyty: false },
+                { id: 3, lat: 50.8312, lng: 15.6395, nazwa: "3. Piekielna Dolina", zdobyty: false },
+                { id: 4, lat: 50.8355, lng: 15.6510, nazwa: "4. Zbójeckie Skały", zdobyty: false },
+                { id: 5, lat: 50.7985, lng: 15.6631, nazwa: "5. Wodospad Podgórnej", zdobyty: false },
+                { id: 6, lat: 50.8021, lng: 15.6582, nazwa: "6. Przesieka - Kamień Waloński", zdobyty: false },
+                { id: 7, lat: 50.7955, lng: 15.6482, nazwa: "7. Ogród Japoński Siruwia", zdobyty: false },
+                { id: 8, lat: 50.7602, lng: 15.6425, nazwa: "8. Przełęcz Karkonoska", zdobyty: false },
+                { id: 9, lat: 50.7608, lng: 15.6432, nazwa: "9. Schronisko Odrodzenie", zdobyty: false },
+                { id: 10, lat: 50.7665, lng: 15.6291, nazwa: "10. Ptasi Kamień", zdobyty: false },
+                { id: 11, lat: 50.7681, lng: 15.6152, nazwa: "11. Śląskie Kamienie", zdobyty: false },
+                { id: 12, lat: 50.7621, lng: 15.6590, nazwa: "12. Czoło nad Przełęczą", zdobyty: false },
+                { id: 13, lat: 50.7675, lng: 15.6085, nazwa: "13. Ruiny schroniska Petrovka", zdobyty: false },
+                { id: 14, lat: 50.8082, lng: 15.6315, nazwa: "14. Sucha Góra", zdobyty: false },
+                { id: 15, lat: 50.7852, lng: 15.6881, nazwa: "15. Borowice - Cmentarz Jeńców Wojennych", zdobyty: false }
+            ],
+            trasa_4: [
+                { id: 1, lat: 50.7771, lng: 15.7241, nazwa: "1. Świątynia Wang", zdobyty: false },
+                { id: 2, lat: 50.7745, lng: 15.7315, nazwa: "2. Punkt Anomalii Grawitacyjnej", zdobyty: false },
+                { id: 3, lat: 50.7712, lng: 15.7425, nazwa: "3. Zapora na Łomnicy", zdobyty: false },
+                { id: 4, lat: 50.7735, lng: 15.7461, nazwa: "4. Szczyt Karpatka", zdobyty: false },
+                { id: 5, lat: 50.7512, lng: 15.7118, nazwa: "5. Schronisko Strzecha Akademicka", zdobyty: false },
+                { id: 6, lat: 50.7485, lng: 15.7024, nazwa: "6. Schronisko Samotnia", zdobyty: false },
+                { id: 7, lat: 50.7480, lng: 15.7010, nazwa: "7. Kocioł Małego Stawu", zdobyty: false },
+                { id: 8, lat: 50.7495, lng: 15.6895, nazwa: "8. Kocioł Wielkiego Stawu", zdobyty: false },
+                { id: 9, lat: 50.7545, lng: 15.7055, nazwa: "9. Domek Myśliwski TPN", zdobyty: false },
+                { id: 10, lat: 50.7571, lng: 15.7112, nazwa: "10. Polana w Karkonoszach", zdobyty: false },
+                { id: 11, lat: 50.7688, lng: 15.7275, nazwa: "11. Dziki Wodospad", zdobyty: false },
+                { id: 12, lat: 50.7681, lng: 15.7311, nazwa: "12. Skocznia Orlinek", zdobyty: false },
+                { id: 13, lat: 50.7781, lng: 15.7655, nazwa: "13. Krucze Skały w Karpaczu", zdobyty: false },
+                { id: 14, lat: 50.7725, lng: 15.7585, nazwa: "14. Muzeum Zabawek", zdobyty: false },
+                { id: 15, lat: 50.7741, lng: 15.7512, nazwa: "15. Dawna Karczma Sądowa", zdobyty: false }
+            ],
+            trasa_5: [
+                { id: 1, lat: 50.7363, lng: 15.7402, nazwa: "1. Szczyt Śnieżka (Obserwatorium)", zdobyty: false },
+                { id: 2, lat: 50.7365, lng: 15.7408, nazwa: "2. Kaplica św. Wawrzyńca na Śnieżce", zdobyty: false },
+                { id: 3, lat: 50.7388, lng: 15.7319, nazwa: "3. Schronisko Dom Śląski", zdobyty: false },
+                { id: 4, lat: 50.7431, lng: 15.7225, nazwa: "4. Spalona Strażnica", zdobyty: false },
+                { id: 5, lat: 50.7422, lng: 15.7285, nazwa: "5. Równia pod Śnieżką", zdobyty: false },
+                { id: 6, lat: 50.7415, lng: 15.7612, nazwa: "6. Sowia Przełęcz", zdobyty: false },
+                { id: 7, lat: 50.7382, lng: 15.7745, nazwa: "7. Schronisko Jelenka (Granica)", zdobyty: false },
+                { id: 8, lat: 50.7615, lng: 15.7645, nazwa: "8. Wejście do Sowiej Doliny", zdobyty: false },
+                { id: 9, lat: 50.7551, lng: 15.7532, nazwa: "9. Szeroki Most", zdobyty: false },
+                { id: 10, lat: 50.7375, lng: 15.7521, nazwa: "10. Czarny Grzbiet", zdobyty: false },
+                { id: 11, lat: 50.7435, lng: 15.7392, nazwa: "11. Kocioł Łomniczki", zdobyty: false },
+                { id: 12, lat: 50.7515, lng: 15.7431, nazwa: "12. Miejsce po Schronisku nad Łomniczką", zdobyty: false },
+                { id: 13, lat: 50.7425, lng: 15.7365, nazwa: "13. Symboliczny Cmentarz Ofiar Gór", zdobyty: false },
+                { id: 14, lat: 50.7711, lng: 15.7695, nazwa: "14. Wilcza Poręba", zdobyty: false },
+                { id: 15, lat: 50.7651, lng: 15.7342, nazwa: "15. Biały Jar", zdobyty: false }
+            ],
+            trasa_6: [
+                { id: 1, lat: 50.7471, lng: 15.8402, nazwa: "1. Przełęcz Okraj", zdobyty: false },
+                { id: 2, lat: 50.7468, lng: 15.8395, nazwa: "2. Schronisko Na Przełęczy Okraj", zdobyty: false },
+                { id: 3, lat: 50.7445, lng: 15.8115, nazwa: "3. Szczyt Czoło (Kowarski Grzbiet)", zdobyty: false },
+                { id: 4, lat: 50.7552, lng: 15.8285, nazwa: "4. Tabaczna Ścieżka", zdobyty: false },
+                { id: 5, lat: 50.7702, lng: 15.8415, nazwa: "5. Sztolnie Kowary (Jelenia Struga)", zdobyty: false },
+                { id: 6, lat: 50.7685, lng: 15.8390, nazwa: "6. Kopalnia Podgórze w Kowarach", zdobyty: false },
+                { id: 7, lat: 50.7965, lng: 15.8322, nazwa: "7. Park Miniatur Zabytków Dolnego Śląska", zdobyty: false },
+                { id: 8, lat: 50.7915, lng: 15.8281, nazwa: "8. Dom Kata w Kowarach", zdobyty: false },
+                { id: 9, lat: 50.7932, lng: 15.8252, nazwa: "9. Ratusz w Kowarach", zdobyty: false },
+                { id: 10, lat: 50.7795, lng: 15.8122, nazwa: "10. Uroczysko Kowary", zdobyty: false },
+                { id: 11, lat: 50.7455, lng: 15.7915, nazwa: "11. Skalny Stół", zdobyty: false },
+                { id: 12, lat: 50.7575, lng: 15.7922, nazwa: "12. Budniki (Dawna osada górska)", zdobyty: false },
+                { id: 13, lat: 50.7852, lng: 15.8612, nazwa: "13. Przełęcz pod Średnicą", zdobyty: false },
+                { id: 14, lat: 50.7885, lng: 15.8525, nazwa: "14. Ruiny Radziwiłłówki", zdobyty: false },
+                { id: 15, lat: 50.7612, lng: 15.7795, nazwa: "15. Wołowa Góra", zdobyty: false }
             ]
         };
 
-        let punktyTrasy = []; // Ta lista zapełni się automatycznie po wybraniu trasy
+        let punktyTrasy = [];
         let mapa, markerGracza, nazwaPatrolu;
         let zdobytePunkty = 0;
 
@@ -66,7 +162,6 @@
 
             if (!nazwaPatrolu) return alert("Musisz podać nazwę patrolu!");
 
-            // Ładujemy punkty tylko dla wybranej trasy
             punktyTrasy = bazaTras[wybranyKluczTrasy];
 
             document.getElementById('stat-team').innerText = "Patrol: " + nazwaPatrolu;
@@ -80,14 +175,13 @@
         }
 
         function InicjalizujMape() {
-            // Centrujemy mapę na pierwszym punkcie WYBRANEJ trasy
-            mapa = L.map('map').setView([punktyTrasy[0].lat, punktyTrasy[0].lng], 15);
+            // Centrujemy na 1. punkcie wybranej trasy, zoom oddalony do 13, by widzieć więcej punktów górskich
+            mapa = L.map('map').setView([punktyTrasy[0].lat, punktyTrasy[0].lng], 13);
 
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '© OpenStreetMap'
             }).addTo(mapa);
 
-            // Rysujemy punkty na mapie
             punktyTrasy.forEach(p => {
                 p.marker = L.marker([p.lat, p.lng]).addTo(mapa).bindPopup(p.nazwa);
             });
@@ -119,12 +213,13 @@
                     let dystans = obliczOdleglosc(gLat, gLng, p.lat, p.lng);
                     if (dystans < najmniejszyDystans) najmniejszyDystans = dystans;
 
+                    // Tolerancja 15 metrów ze względu na gorszy zasięg GPS w górach/lasach
                     if (dystans <= 15) {
                         p.zdobyty = true;
                         zdobytePunkty++;
                         document.getElementById('stat-score').innerText = zdobytePunkty;
-                        p.marker.setOpacity(0.4);
-                        alert("Brawo! Zdobyliście: " + p.nazwa);
+                        p.marker.setOpacity(0.3);
+                        alert("Brawo! Zdobyliście punkt: " + p.nazwa);
                     }
                 }
             });
