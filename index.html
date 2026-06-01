@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nasza Gra Terenowa</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        body { margin: 0; padding: 0; font-family: sans-serif; background: #f4f4f4; }
+        #login-screen { padding: 30px; text-align: center; }
+        #game-screen { display: none; position: relative; width: 100vw; height: 100vh; }
+        #map { width: 100%; height: 100%; }
+        #panel { position: absolute; top: 10px; left: 10px; z-index: 1000; background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.3); max-width: 85%; }
+        input, select, button { padding: 12px; margin: 10px 0; width: 90%; max-width: 300px; font-size: 16px; border-radius: 5px; border: 1px solid #ccc; }
+        button { background: #28a745; color: white; font-weight: bold; border: none; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+    <div id="login-screen">
+        <h2>Witaj w Grze Terenowej!</h2>
+        <p>Wpisz nazwę swojego patrolu i wybierz trasę:</p>
+        <input type="text" id="team-name" placeholder="Nazwa Patrolu..." required><br>
+        
+        <select id="route-select">
+            <option value="trasa_zielona">Trasa Zielona (Centrum - Łatwa)</option>
+            <option value="trasa_czerwona">Trasa Czerwona (Park - Trudna)</option>
+        </select><br>
+        
+        <button onclick="uruchomGre()">Zacznij Przygodę</button>
+    </div>
+
+    <div id="game-screen">
+        <div id="panel">
+            <b id="stat-team">Patrol: -</b><br>
+            <small id="stat-route" style="color: gray;">Trasa: -</small><br>
+            Dystans do punktu: <span id="stat-distance">Szukanie GPS...</span> m<br>
+            Zdobyte punkty: <span id="stat-score">0</span> / <span id="stat-total">0</span>
+        </div>
+        <div id="map"></div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        // TUTAJ DEFINIUJEMY WSZYSTKIE TRASY I ICH PUNKTY
+        const bazaTras = {
+            trasa_zielona: [
+                { id: 1, lat: 52.2297, lng: 21.0122, nazwa: "Zielona 1: Wielkie drzewo", zdobyty: false },
+                { id: 2, lat: 52.2315, lng: 21.0145, nazwa: "Zielona 2: Kapliczka", zdobyty: false }
+            ],
+            trasa_czerwona: [
+                { id: 1, lat: 52.2330, lng: 21.0160, nazwa: "Czerwona 1: Pomnik", zdobyty: false },
+                { id: 2, lat: 52.2350, lng: 21.0190, nazwa: "Czerwona 2: Ukryta ławka", zdobyty: false },
+                { id: 3, lat: 52.2370, lng: 21.0210, nazwa: "Czerwona 3: Mostek", zdobyty: false }
+            ]
+        };
+
+        let punktyTrasy = []; // Ta lista zapełni się automatycznie po wybraniu trasy
+        let mapa, markerGracza, nazwaPatrolu;
+        let zdobytePunkty = 0;
+
+        function uruchomGre() {
+            nazwaPatrolu = document.getElementById('team-name').value;
+            const wybranyKluczTrasy = document.getElementById('route-select').value;
+            const wybranaNazwaTrasy = document.getElementById('route-select').options[document.getElementById('route-select').selectedIndex].text;
+
+            if (!nazwaPatrolu) return alert("Musisz podać nazwę patrolu!");
+
+            // Ładujemy punkty tylko dla wybranej trasy
+            punktyTrasy = bazaTras[wybranyKluczTrasy];
+
+            document.getElementById('stat-team').innerText = "Patrol: " + nazwaPatrolu;
+            document.getElementById('stat-route').innerText = "Trasa: " + wybranaNazwaTrasy;
+            document.getElementById('stat-total').innerText = punktyTrasy.length;
+            
+            document.getElementById('login-screen').style.display = 'none';
+            document.getElementById('game-screen').style.display = 'block';
+
+            InicjalizujMape();
+        }
+
+        function InicjalizujMape() {
+            // Centrujemy mapę na pierwszym punkcie WYBRANEJ trasy
+            mapa = L.map('map').setView([punktyTrasy[0].lat, punktyTrasy[0].lng], 15);
+
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap'
+            }).addTo(mapa);
+
+            // Rysujemy punkty na mapie
+            punktyTrasy.forEach(p => {
+                p.marker = L.marker([p.lat, p.lng]).addTo(mapa).bindPopup(p.nazwa);
+            });
+
+            if (navigator.geolocation) {
+                navigator.geolocation.watchPosition(aktualizujPozycjeGracza, bladGPS, {
+                    enableHighAccuracy: true,
+                    maximumAge: 0
+                });
+            } else {
+                alert("Twój telefon nie obsługuje GPS.");
+            }
+        }
+
+        function aktualizujPozycjeGracza(pozycja) {
+            const gLat = pozycja.coords.latitude;
+            const gLng = pozycja.coords.longitude;
+
+            if (markerGracza) {
+                markerGracza.setLatLng([gLat, gLng]);
+            } else {
+                markerGracza = L.circleMarker([gLat, gLng], { color: 'blue', radius: 9 }).addTo(mapa).bindPopup("Twoja pozycja");
+            }
+
+            let najmniejszyDystans = Infinity;
+
+            punktyTrasy.forEach(p => {
+                if (!p.zdobyty) {
+                    let dystans = obliczOdleglosc(gLat, gLng, p.lat, p.lng);
+                    if (dystans < najmniejszyDystans) najmniejszyDystans = dystans;
+
+                    if (dystans <= 15) {
+                        p.zdobyty = true;
+                        zdobytePunkty++;
+                        document.getElementById('stat-score').innerText = zdobytePunkty;
+                        p.marker.setOpacity(0.4);
+                        alert("Brawo! Zdobyliście: " + p.nazwa);
+                    }
+                }
+            });
+
+            document.getElementById('stat-distance').innerText = najmniejszyDystans === Infinity ? "Wszystko zdobyte!" : Math.round(najmniejszyDystans);
+        }
+
+        function bladGPS(err) {
+            console.warn("Błąd lokalizacji: " + err.message);
+        }
+
+        function obliczOdleglosc(lat1, lon1, lat2, lon2) {
+            const R = 6371000; 
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                      Math.sin(dLon/2) * Math.sin(dLon/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return R * c;
+        }
+    </script>
+</body>
+</html>
